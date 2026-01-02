@@ -1,6 +1,8 @@
 import { Message } from "../models/message.model.js";
 import { User } from "../models//user.model.js";
 import cloudinary from "../lib/cloudinary.js";
+import { getReceiverSocketId } from "../lib/socket.js";
+import { io } from "../lib/socket.js";
 
 export const getAllContacts = async (req, res) => {
   try {
@@ -42,7 +44,7 @@ export const sendMessage = async (req, res) => {
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
-    if (!test && !image) {
+    if (!text && !image) {
       return res.status(400).json({ message: "Text or image is required" });
     }
 
@@ -73,6 +75,12 @@ export const sendMessage = async (req, res) => {
     });
 
     await newMessage.save();
+
+    const receiverSocketId = getReceiverSocketId(receiverId);
+
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("newMessage", newMessage);
+    }
 
     res.status(201).json(newMessage);
   } catch (error) {
